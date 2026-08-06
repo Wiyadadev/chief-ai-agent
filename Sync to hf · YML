@@ -1,0 +1,31 @@
+name: Sync to Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # กดรันเองจากแท็บ Actions ได้ด้วย ไม่ต้องรอ push
+
+jobs:
+  sync-to-hub:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Prepend Hugging Face Space YAML header to README
+        run: |
+          cat space-readme-header.yml README.md > /tmp/space_readme.md
+          mv /tmp/space_readme.md README.md
+          # ไฟล์นี้ใช้แค่ตอน sync เท่านั้น ไม่ commit กลับเข้า GitHub repo หลัก
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git remote add space https://vyada:${HF_TOKEN}@huggingface.co/spaces/vyada/vyada-systems
+          git push --force space HEAD:main
