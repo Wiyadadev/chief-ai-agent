@@ -21,11 +21,18 @@ jobs:
           mv /tmp/space_readme.md README.md
           # ไฟล์นี้ใช้แค่ตอน sync เท่านั้น ไม่ commit กลับเข้า GitHub repo หลัก
 
+      - name: Commit README change locally (for the Space push only)
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git add README.md
+          git commit -m "Add HF Space YAML frontmatter for sync" --allow-empty
+          # commit นี้อยู่แค่ใน working copy ชั่วคราวของ Action runner เท่านั้น
+          # ไม่มีการ push กลับไปที่ origin (GitHub) เลย — push ไปแค่ remote "space" ด้านล่าง
+
       - name: Push to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
           git remote add space https://vyada:${HF_TOKEN}@huggingface.co/spaces/vyada/vyada-systems
           git push --force space HEAD:main
