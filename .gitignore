@@ -1,0 +1,23 @@
+# Secrets — ห้าม commit เด็ดขาด
+.env
+*.env
+
+# ข้อมูลจริงของผู้ใช้ (สร้างจาก store.py ตอนรันจริง) — ไม่ใช่โค้ด ไม่ควรอยู่ใน repo
+data/
+
+# ข้อมูล legacy ก่อนย้ายเข้า data/ (เผื่อยังเหลืออยู่ในเครื่องที่ dev)
+memory.json
+goals.json
+tasks.json
+session_history.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+.vscode/
