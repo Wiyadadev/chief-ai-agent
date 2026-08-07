@@ -1290,8 +1290,8 @@ if __name__ == "__main__":
     demo.launch(
         css=css,
         head=_head_script,
-        server_name="127.0.0.1",
+        server_name="0.0.0.0",  # รับ request จากทุก interface — จำเป็นสำหรับ Hugging Face Spaces
         server_port=7860,
         share=False,
-        inbrowser=True,
+        inbrowser=False,  # ไม่มีเบราว์เซอร์ในเครื่องให้เปิดตอนรันใน container
     )
