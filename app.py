@@ -6,6 +6,7 @@ import json
 import tempfile
 from datetime import datetime as dt_class
 from memory.store import *
+from video_gen import generate_video_from_image
 from nox_project_manager import (
     next_action as nox_next_action,
     set_status as nox_set_status,
@@ -761,6 +762,68 @@ def clear_chat():
 
 
 # ============================================================
+# CHIEF DESIGNER MODE — อัปโหลดโปรเจกต์เป็น .zip แทนการอ้าง path ในเครื่อง
+# เพราะ Chief รันบน Hugging Face Space (คนละเครื่องกับผู้ใช้เสมอ) จึง
+# ไม่มีทางเข้าถึงไฟล์ในเครื่องผู้ใช้ได้เลยไม่ว่าจะเขียนโค้ดแบบไหนก็ตาม
+# ============================================================
+import zipfile
+
+PROJECTS_DIR = os.path.join("data", "nox_projects")
+
+
+def handle_project_upload(zip_file, project_name):
+    if not project_name or not project_name.strip():
+        return "❌ กรุณาใส่ชื่อโปรเจกต์ก่อนอัปโหลด"
+    if not zip_file:
+        return "❌ กรุณาเลือกไฟล์ .zip ก่อนอัปโหลด"
+
+    name = project_name.strip()
+    zip_path = zip_file if isinstance(zip_file, str) else zip_file.name
+    target_dir = os.path.join(PROJECTS_DIR, name)
+
+    try:
+        os.makedirs(target_dir, exist_ok=True)
+        target_abs = os.path.abspath(target_dir)
+        with zipfile.ZipFile(zip_path, "r") as z:
+            # กัน zip-slip: เช็คว่าไม่มีไฟล์ไหนพยายามหนีออกนอก target_dir
+            # (ต้องเทียบ absolute path กับ absolute path เท่านั้น เทียบ relative
+            # กับ absolute จะไม่ match อะไรเลยแม้ path จะปกติดี — บั๊กที่เจอตอนทดสอบ)
+            for member in z.namelist():
+                member_abs = os.path.normpath(os.path.join(target_abs, member))
+                if member_abs != target_abs and not member_abs.startswith(target_abs + os.sep):
+                    return f"❌ ไฟล์ zip มีเส้นทางที่ผิดปกติ ({member}) — ยกเลิกการอัปโหลดเพื่อความปลอดภัย"
+            z.extractall(target_dir)
+    except zipfile.BadZipFile:
+        return "❌ ไฟล์ที่อัปโหลดไม่ใช่ไฟล์ .zip ที่ถูกต้อง"
+    except Exception as e:
+        return f"❌ แตกไฟล์ไม่สำเร็จ: {e}"
+
+    nox_save_project_path(name, target_dir)
+    return (
+        f"✅ อัปโหลดและเชื่อมโปรเจกต์ '{name}' แล้ว\n\n"
+        f"พิมพ์ `/continue {name}` เพื่อดูว่าไฟล์ไหนเสร็จแล้ว ไฟล์ไหนยังต้องทำต่อครับ"
+    )
+
+
+def handle_video_generation(ref_image, prompt, duration, generate_audio):
+    if not ref_image:
+        return None, "❌ กรุณาอัปโหลดภาพต้นแบบ (Character Sheet) ก่อนครับ"
+    if not prompt or not prompt.strip():
+        return None, "❌ กรุณาใส่คำบรรยายฉาก (prompt) ก่อนครับ"
+
+    result = generate_video_from_image(
+        image_path=ref_image,
+        prompt=prompt.strip(),
+        duration=duration,
+        generate_audio=generate_audio,
+    )
+
+    if result["success"]:
+        return result["local_path"], result["message"]
+    return None, result["message"]
+
+
+# ============================================================
 # CSS
 # ============================================================
 css = """
@@ -1142,6 +1205,62 @@ with gr.Blocks(title=f"Chief — VYADA Systems · {owner['name']}") as demo:
                         height=160,
                     )
 
+                with gr.Accordion("🗂️ Chief Designer Mode — อัปโหลดโปรเจกต์ (.zip)", open=False):
+                    gr.HTML("""
+                    <div style="font-size:13px; color:#aaa; margin-bottom:8px;">
+                        ซิป (.zip) โฟลเดอร์โปรเจกต์แล้วอัปโหลดที่นี่ — Chief จะสแกนไฟล์ทั้งหมดให้
+                        แล้วพิมพ์ <code>/continue [ชื่อโปรเจกต์]</code> เพื่อดูว่าไฟล์ไหนเสร็จแล้ว (ล็อก)
+                        ไฟล์ไหนยังต้องทำต่อ — ใช้แทน path ในเครื่อง เพราะ Chief รันอยู่บนคลาวด์
+                        มองไม่เห็นไฟล์ในเครื่องคุณโดยตรง
+                    </div>
+                    """)
+                    with gr.Row():
+                        project_name_input = gr.Textbox(
+                            placeholder="ชื่อโปรเจกต์ เช่น NOX_Studio",
+                            show_label=False,
+                            scale=2,
+                        )
+                        project_zip_input = gr.File(
+                            file_types=[".zip"],
+                            label="ไฟล์ .zip",
+                            scale=2,
+                        )
+                    project_upload_btn = gr.Button("📤 อัปโหลดโปรเจกต์", variant="secondary")
+                    project_upload_status = gr.Markdown("")
+
+                with gr.Accordion("🎬 สร้างวิดีโอด้วย AI (Kling ผ่าน fal.ai)", open=False):
+                    gr.HTML("""
+                    <div style="font-size:13px; color:#aaa; margin-bottom:8px;">
+                        อัปโหลด <b>ภาพต้นแบบ</b> (เช่น Character Sheet ของ NOX) เพื่อให้วิดีโอที่ได้
+                        มีหน้าตาตัวละครตรงกับต้นฉบับมากที่สุด — ต้องมีภาพต้นแบบเสมอ ไม่รองรับ
+                        text-to-video ล้วนๆ เพราะคุมหน้าตาตัวละครไม่ได้ตาม Golden Rule ของ NOX Studio<br><br>
+                        ⏱️ การสร้างวิดีโอใช้เวลา 1-5 นาที และมีค่าใช้จ่ายต่อครั้งตามราคาของ fal.ai
+                    </div>
+                    """)
+                    video_ref_image = gr.Image(
+                        type="filepath",
+                        label="ภาพต้นแบบ (Character Sheet)",
+                        height=200,
+                    )
+                    video_prompt_input = gr.Textbox(
+                        placeholder="บรรยายฉาก/การเคลื่อนไหวที่ต้องการ (แนะนำเป็นภาษาอังกฤษ) เช่น: NOX walks slowly through a glowing forest at night, tail sparkling like stars",
+                        label="คำบรรยายฉาก (Prompt)",
+                        lines=2,
+                    )
+                    with gr.Row():
+                        video_duration_input = gr.Dropdown(
+                            choices=["5", "10"],
+                            value="5",
+                            label="ความยาว (วินาที)",
+                        )
+                        video_audio_input = gr.Checkbox(
+                            value=True,
+                            label="สร้างเสียงประกอบด้วย",
+                        )
+                    video_generate_btn = gr.Button("🎬 สร้างวิดีโอ", variant="primary")
+                    video_output = gr.Video(label="วิดีโอที่สร้างเสร็จ")
+                    video_status_output = gr.Markdown("")
+
                 with gr.Accordion("🎙️ Voice Interaction", open=True):
                     voice_input = gr.Audio(
                         sources=["microphone", "upload"],
@@ -1256,6 +1375,18 @@ with gr.Blocks(title=f"Chief — VYADA Systems · {owner['name']}") as demo:
     ).then(refresh_home_widgets, outputs=[home_dashboard, activity_log_box])
 
     hf_toggle_btn.click(None, js="hf_toggle")
+
+    project_upload_btn.click(
+        handle_project_upload,
+        inputs=[project_zip_input, project_name_input],
+        outputs=[project_upload_status],
+    )
+
+    video_generate_btn.click(
+        handle_video_generation,
+        inputs=[video_ref_image, video_prompt_input, video_duration_input, video_audio_input],
+        outputs=[video_output, video_status_output],
+    )
 
     # ---- Home / Chief Desk wiring ----
     home_speak_btn.click(None, js="hf_toggle")  # ใช้ toggle เดียวกับ hands-free ใน Command Center
