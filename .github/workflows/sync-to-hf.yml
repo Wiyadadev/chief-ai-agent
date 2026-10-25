@@ -16,9 +16,27 @@ jobs:
           lfs: true
 
       - name: Prepend Hugging Face Space YAML header to README
+        shell: bash
+        working-directory: ${{ github.workspace }}
         run: |
-          cat space-readme-header.yml README.md > /tmp/space_readme.md
-          mv /tmp/space_readme.md README.md
+          set -euo pipefail
+          for file in space-readme-header.yml README.md; do
+            if [[ ! -s "$file" ]]; then
+              echo "::error file=$file::Required sync input is missing or empty in this checkout. Restore the tracked file; do not invent Space configuration."
+              exit 1
+            fi
+          done
+
+          # Refuse to duplicate an existing header or replace unverified Space config.
+          if [[ "$(head -n 1 README.md)" == '---' ]]; then
+            echo "::error file=README.md::README already has frontmatter; reconcile it with space-readme-header.yml before syncing."
+            exit 1
+          fi
+
+          readme_tmp=$(mktemp)
+          trap 'rm -f "$readme_tmp"' EXIT
+          cat space-readme-header.yml README.md > "$readme_tmp"
+          mv "$readme_tmp" README.md
           # ไฟล์นี้ใช้แค่ตอน sync เท่านั้น ไม่ commit กลับเข้า GitHub repo หลัก
 
       - name: Commit README change locally (for the Space push only)
