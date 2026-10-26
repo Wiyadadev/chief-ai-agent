@@ -7,14 +7,14 @@ natural-language requests via OpenAI function calling, not just slash commands.
 ## Project structure
 
 - `app.py` — Gradio UI, slash-command routing, OpenAI function-calling loop, event wiring
+- `video_gen.py` — optional fal.ai image-to-video integration
 - `memory/store.py` — data layer: goals, tasks, rocks, scorecard, issues, decisions,
   workflows, clients, calendar, preferences, knowledge, plus the OpenAI client and
   department-agent orchestration (`run_team_task`)
+- `nox_project_manager.py` — temporary stub; project-scanning commands are not implemented
 - `memory_manager.py` — a `MemoryManager` class for JSON load/save (currently **not
   wired into the app** — `store.py` uses its own `mem_load`/`mem_save` functions with a
   `data/` directory. Keeping this here for a possible future refactor; see note below.)
-- `nox_project_manager.py` — **not included yet**, needed for the `/continue`, `/lock`,
-  `/link-project` commands. Add it to the repo root before running.
 
 ## ⚠️ Known gap: `memory_manager.py` vs `store.py`
 
@@ -36,7 +36,7 @@ directory changed to `data/` and a caller-supplied default value, at minimum.
 ## Setup
 
 ```bash
-pip install gradio openai python-dotenv pillow
+pip install -r requirements.txt
 ```
 
 Create a `.env` file (never commit this):
@@ -44,6 +44,7 @@ Create a `.env` file (never commit this):
 OPENAI_API_KEY=sk-...
 TELEGRAM_BOT_TOKEN=...   # optional, for morning briefing push
 TELEGRAM_CHAT_ID=...     # optional
+FAL_KEY=...              # optional, for video generation
 ```
 
 ## Running
@@ -56,7 +57,8 @@ Opens at `http://127.0.0.1:7860`.
 
 ## Known limitations
 
-- `nox_project_manager.py` is required by `app.py` but not yet in this repo.
+- `nox_project_manager.py` is a stub so the app can import; `/continue`, `/lock`, and
+  `/link-project` are unavailable until the real project manager is implemented.
 - Natural-language function calling covers the most common actions (tasks, goals,
   rocks, scorecard, issues, clients, calendar, preferences, knowledge, workflows,
   decisions, team consultation, web search) — see `TOOLS` in `app.py`. It does not

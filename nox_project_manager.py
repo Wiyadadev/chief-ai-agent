@@ -7,15 +7,14 @@ nox_project_manager.py ตัวจริง (สำหรับ "Chief Designer
 เพื่อให้ฟีเจอร์อื่นๆ ทั้งหมดใช้งานได้ตามปกติก่อน
 
 คำสั่งที่ยังใช้ไม่ได้จนกว่าจะมีไฟล์จริง: /continue, /lock, /link-project
-(จะตอบกลับข้อความแจ้งชัดเจนว่ายังไม่พร้อมใช้งาน ไม่ใช่แกล้งทำเป็นทำงานได้
-หรือพังแบบเงียบๆ)
+(จะแจ้งว่ายังไม่พร้อมใช้งาน แทนการรายงานว่าสำเร็จทั้งที่ยังไม่ได้บันทึก)
 
 เมื่อมีไฟล์จริงแล้ว ให้แทนที่ไฟล์นี้ทั้งไฟล์ได้เลย ไม่ต้องแก้ app.py เพิ่ม
 เพราะ app.py import มาแค่ 4 ฟังก์ชันนี้ ชื่อ/พารามิเตอร์ต้องตรงกันแบบนี้:
     next_action(project_dir) -> str
     set_status(project_dir, filename, status) -> str
     resolve_project_path(name) -> str | None
-    save_project_path(name, path) -> None
+    save_project_path(name, path) -> str | None
 """
 
 _STUB_NOTICE = (
@@ -43,7 +42,5 @@ def resolve_project_path(name):
 
 
 def save_project_path(name, path):
-    """ไม่บันทึกอะไรจริง (ไม่มีที่เก็บถาวรใน stub นี้) — /link-project
-    จะยังตอบว่า 'เชื่อมแล้ว' ตาม UI เดิม แต่การเชื่อมนี้จะหายไปเมื่อรีสตาร์ท
-    และ /continue จะยังใช้ไม่ได้อยู่ดีจนกว่าจะมีไฟล์จริง"""
-    return None
+    """แจ้งว่า stub ยังไม่สามารถบันทึกการเชื่อมโยงโปรเจกต์ได้"""
+    return _STUB_NOTICE

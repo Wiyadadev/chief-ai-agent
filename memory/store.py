@@ -1048,9 +1048,6 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 def send_telegram_message(text):
     """ส่งข้อความไปยัง Telegram ผ่าน Bot API — ถ้ายังไม่ตั้งค่า token/chat_id ไว้ จะข้ามเงียบๆ ไม่ error"""
 
-    print("TOKEN:", TELEGRAM_BOT_TOKEN)
-    print("CHAT_ID:", TELEGRAM_CHAT_ID)
-
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return False
 
@@ -1070,7 +1067,6 @@ def send_telegram_message(text):
         with urllib.request.urlopen(req, timeout=10) as res:
             return res.status == 200
 
-    except Exception:
-        import traceback
-        traceback.print_exc()
+    except Exception as exc:
+        print(f"Telegram message delivery failed ({type(exc).__name__})")
         return False

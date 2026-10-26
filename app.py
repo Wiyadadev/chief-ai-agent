@@ -79,7 +79,9 @@ def handle_command(text):
         if ":" not in body:
             return "❌ รูปแบบ: /link-project ชื่อโปรเจกต์ : path เต็มของโฟลเดอร์\nเช่น /link-project NOX_Studio : C:\\Users\\Apple\\Documents\\NOX_Studio"
         name, path = [p.strip() for p in body.split(":", 1)]
-        nox_save_project_path(name, path)
+        result = nox_save_project_path(name, path)
+        if result:
+            return result
         return f"✅ เชื่อม '{name}' → {path} แล้ว\nพิมพ์ /continue {name} ได้เลยครั้งต่อไป"
 
     if text.startswith("/continue"):
@@ -798,7 +800,12 @@ def handle_project_upload(zip_file, project_name):
     except Exception as e:
         return f"❌ แตกไฟล์ไม่สำเร็จ: {e}"
 
-    nox_save_project_path(name, target_dir)
+    link_result = nox_save_project_path(name, target_dir)
+    if link_result:
+        return (
+            f"✅ อัปโหลดโปรเจกต์ '{name}' แล้ว แต่ยังเชื่อมโปรเจกต์ไม่ได้:\n"
+            f"{link_result}"
+        )
     return (
         f"✅ อัปโหลดและเชื่อมโปรเจกต์ '{name}' แล้ว\n\n"
         f"พิมพ์ `/continue {name}` เพื่อดูว่าไฟล์ไหนเสร็จแล้ว ไฟล์ไหนยังต้องทำต่อครับ"
