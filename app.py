@@ -1425,10 +1425,16 @@ with gr.Blocks(title=f"Chief — VYADA Systems · {owner['name']}") as demo:
 
 
 if __name__ == "__main__":
+    hosted = bool(os.getenv("SPACE_ID"))
+    username = os.getenv("CHIEF_UI_USERNAME")
+    password = os.getenv("CHIEF_UI_PASSWORD")
+    if hosted and not (username and password):
+        raise SystemExit("Set CHIEF_UI_USERNAME and CHIEF_UI_PASSWORD before starting Chief on Spaces.")
     demo.launch(
         css=css,
         head=_head_script,
-        server_name="0.0.0.0",  # รับ request จากทุก interface — จำเป็นสำหรับ Hugging Face Spaces
+        server_name="0.0.0.0" if hosted else "127.0.0.1",
+        auth=(username, password) if hosted else None,
         server_port=7860,
         share=False,
         inbrowser=False,  # ไม่มีเบราว์เซอร์ในเครื่องให้เปิดตอนรันใน container
